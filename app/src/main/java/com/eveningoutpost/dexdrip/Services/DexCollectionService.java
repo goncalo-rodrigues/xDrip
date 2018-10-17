@@ -265,8 +265,11 @@ public class DexCollectionService extends Service implements BtCallBack {
 
     private synchronized void handleDisconnectedStateChange() {
         if (JoH.ratelimit("handle-disconnected-state-change", 2)) {
+            UserError.Log.e(TAG, "Handle disconnect now");
+
             mConnectionState = STATE_DISCONNECTED;
             ActiveBluetoothDevice.disconnected();
+
 
             if (!getTrustAutoConnect()) {
                 if (mBluetoothGatt != null) {
@@ -300,7 +303,7 @@ public class DexCollectionService extends Service implements BtCallBack {
             Log.i(TAG, "onConnectionStateChange: Disconnected from GATT server.");
             setRetryTimer();
         } else {
-            UserError.Log.d(TAG, "Ignoring duplicate disconnected state change");
+            UserError.Log.e(TAG, "Ignoring duplicate disconnected state change");
         }
     }
 
@@ -1210,9 +1213,12 @@ public class DexCollectionService extends Service implements BtCallBack {
             boolean found = false;
             for (BluetoothDevice bluetoothDevice : bluetoothManager.getConnectedDevices(BluetoothProfile.GATT)) {
                 if (bluetoothDevice.getAddress().equals(device.getAddress())) {
+                    UserError.Log.d(TAG, "device.getAddress()=" + device.getAddress());
+
                     found = true;
                     if (mConnectionState != STATE_CONNECTED) {
                         UserError.Log.d(TAG, "Detected state change by checking connected devices");
+                        UserError.Log.d(TAG, "State ActiveBluetoothDevice.is_connected()=" + ActiveBluetoothDevice.is_connected());
                         handleConnectedStateChange();
                     }
                     break;
@@ -1230,7 +1236,15 @@ public class DexCollectionService extends Service implements BtCallBack {
             mConnectionState = STATE_DISCONNECTED; // can't be connected if we don't know the device
         }
 
-        Log.i(TAG, "checkConnection: Connection state: " + getStateStr(mConnectionState));
+        if (mConnectionState == STATE_CONNECTED && mBluetoothGatt == null) {
+            //dont know how this can be possible but force disconnect
+            JoH.static_toast_long("Force disconnect state!");
+            Log.e(TAG, "******Connected but mBluetoothGatt == null, force disconnect");
+            handleDisconnectedStateChange();
+        }
+
+        Log.i(TAG, "checkConnection: Connection state: " + getStateStr(mConnectionState) + " (mBluetoothGatt=" + mBluetoothGatt + ")");
+
         if (mConnectionState == STATE_DISCONNECTED || mConnectionState == STATE_DISCONNECTING) {
             final ActiveBluetoothDevice btDevice = ActiveBluetoothDevice.first();
             if (btDevice != null) {
