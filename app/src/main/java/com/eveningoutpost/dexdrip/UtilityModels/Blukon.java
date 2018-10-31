@@ -259,19 +259,19 @@ private static final int POSITION_OF_SENSOR_STATUS_BYTE = 17;
         if (strRecCmd.equalsIgnoreCase(WAKEUP_COMMAND)) {
             cmdFound = 1;
 
-            m_minutesDiffToLastReading = (int) (JoH.msSince(m_persistentTimeLastBg) / Constants.MINUTE_IN_MS);
+            /*m_minutesDiffToLastReading = (int) (JoH.msSince(m_persistentTimeLastBg) / Constants.MINUTE_IN_MS);
 
             Log.i(TAG, "m_minutesDiffToLastReading (no rounding)=" + m_minutesDiffToLastReading + ", last reading: " + JoH.dateTimeText(m_persistentTimeLastBg));
 
-            if (m_minutesDiffToLastReading >= 4) {
+            if (m_minutesDiffToLastReading >= 4) {*/
                 Log.i(TAG, "Reset currentCommand");
                 currentCommand = "";
                 m_communicationStarted = true;
-            } else {
+            /*} else {
                 Log.e(TAG, "New Cmd received too early, send blukon to sleep");
                 currentCommand = SLEEP_COMMAND;
                 //Home.toaststaticnext("New Cmd received too early: ignore it!");
-            }
+            }*/
         }
 
         // BluconACKResponse will come in two different situations
@@ -522,7 +522,15 @@ private static final int POSITION_OF_SENSOR_STATUS_BYTE = 17;
             Log.i(TAG, "********got getNowGlucoseData=" + currentGlucose);
 
             if (!m_getOlderReading) {
-                processNewTransmitterData(TransmitterData.create(currentGlucose, currentGlucose, 0 /*battery level force to 0 as unknown*/, now));
+
+                m_minutesDiffToLastReading = (int) (JoH.msSince(m_persistentTimeLastBg) / Constants.MINUTE_IN_MS);
+                Log.i(TAG, "m_minutesDiffToLastReading (no rounding)=" + m_minutesDiffToLastReading + ", last reading: " + JoH.dateTimeText(m_persistentTimeLastBg));
+
+                if (m_minutesDiffToLastReading >= 4) {
+                    processNewTransmitterData(TransmitterData.create(currentGlucose, currentGlucose, 0 /*battery level force to 0 as unknown*/, now));
+                } else {
+                    Log.e(TAG, "New Cmd received too early, send blukon to sleep asnd ignore BG value");
+                }
 
                 m_timeLastBg = now;
 
