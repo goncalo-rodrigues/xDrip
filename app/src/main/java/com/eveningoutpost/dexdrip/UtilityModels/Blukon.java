@@ -104,6 +104,7 @@ public class Blukon {
     public static void initialize() {
             Log.i(TAG, "initialize Blukon!");
             JoH.clearRatelimit(BLUKON_GETSENSORAGE_TIMER);
+            JoH.clearRatelimit(BLUKON_DECODE_SERIAL_TIMER);// set to current time to force timer to be set back
             m_getNowGlucoseDataCommand = false;
             m_getNowGlucoseDataIndexCommand = false;
 
@@ -413,6 +414,11 @@ private static final int POSITION_OF_SENSOR_STATUS_BYTE = 17;
                 Log.i(TAG, "getHistoricData (2)");
                 currentCommand = GET_HISTORIC_DATA_COMMAND_ALL_BLOCKS;
                 m_blockNumber = 0;
+
+                //force read from sensor age when getting historic on next reading
+                if (getHistoricReadings) {
+                    JoH.clearRatelimit(BLUKON_GETSENSORAGE_TIMER);
+                }
             } else {
                 if (JoH.pratelimit(BLUKON_GETSENSORAGE_TIMER, GET_SENSOR_AGE_DELAY)) {
                     currentCommand = GET_SENSOR_TIME_COMMAND;
@@ -429,9 +435,18 @@ private static final int POSITION_OF_SENSOR_STATUS_BYTE = 17;
          */
         } else if (currentCommand.startsWith(GET_SENSOR_TIME_COMMAND) /*getSensorAge*/ && strRecCmd.startsWith(SINGLE_BLOCK_INFO_RESPONSE_PREFIX)) {
             cmdFound = 1;
-            Log.i(TAG, "SensorAge received");
 
             int sensorAge = sensorAge(buffer);
+            Log.i(TAG, "SensorAge received=" + sensorAge);
+
+            int currentSensorAge = Pref.getInt("nfc_sensor_age", 0);
+            Log.i(TAG, "current SensorAge=" + currentSensorAge);
+
+            //This is a new sensor, force read from serial
+            if (sensorAge < currentSensorAge) {
+                Log.i(TAG, "new sensor?");
+                JoH.clearRatelimit(BLUKON_DECODE_SERIAL_TIMER);// set to current time to force timer to be set back
+            }
 
             if ((sensorAge >= 0) && (sensorAge < 200000)) {
                 Pref.setInt("nfc_sensor_age", sensorAge);//in min
